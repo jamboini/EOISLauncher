@@ -1,11 +1,21 @@
 package net.elementsmodcolab;
 
 import java.awt.EventQueue;
+import SevenZip.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.BufferedOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.URL;
 import java.net.URLEncoder;
+import java.util.Enumeration;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
+
 import javax.swing.JButton;
 import javax.swing.JEditorPane;
 import javax.swing.JFrame;
@@ -17,6 +27,7 @@ import javax.swing.SpringLayout;
 import javax.swing.UIManager;
 import net.elementsmodcolab.launcherData.CodeCore;
 import net.elementsmodcolab.launcherData.MinecraftLauncher;
+import javax.swing.JCheckBox;
 
 public class LauncherWindow {
 
@@ -25,6 +36,11 @@ public class LauncherWindow {
 	private JPasswordField passwordField;
 	public boolean offline = false;
 	public JLabel label;
+    public boolean exists = (new File(CodeCore.getWorkingDir() + "/bin/minecraft.jar")).exists();
+    public boolean exists1 = (new File(CodeCore.getWorkingDir() + "/bin/lwjgl.jar")).exists();
+    public boolean exists2 = (new File(CodeCore.getWorkingDir() + "/bin/lwjgl_util.jar")).exists();
+    public boolean exists3 = (new File(CodeCore.getWorkingDir() + "/bin/jinput.jar")).exists();
+    public JCheckBox chckbxForceUpdate;
 
 	/**
 	 * Launch the application.
@@ -85,15 +101,16 @@ public class LauncherWindow {
 		springLayout.putConstraint(SpringLayout.SOUTH, passwordField, -10, SpringLayout.SOUTH, frame.getContentPane());
 		frame.getContentPane().add(passwordField);
 		
-		JButton button_1 = new JButton("Settings");
-		button_1.addActionListener(new ActionListener() {
+		JButton btnPlayOffline = new JButton("Play Offline");
+		btnPlayOffline.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				CodeCore.settingsDialogue();
+				String[] mc = new String[] {CodeCore.getWorkingDir(), "", ""};
+				MinecraftLauncher.init(mc);
 			}
 		});
-		springLayout.putConstraint(SpringLayout.NORTH, button_1, 0, SpringLayout.NORTH, textField);
-		springLayout.putConstraint(SpringLayout.EAST, button_1, -10, SpringLayout.EAST, frame.getContentPane());
-		frame.getContentPane().add(button_1);
+		springLayout.putConstraint(SpringLayout.NORTH, btnPlayOffline, 0, SpringLayout.NORTH, textField);
+		springLayout.putConstraint(SpringLayout.EAST, btnPlayOffline, -10, SpringLayout.EAST, frame.getContentPane());
+		frame.getContentPane().add(btnPlayOffline);
 		
 		label = new JLabel("");
 		springLayout.putConstraint(SpringLayout.WEST, label, 401, SpringLayout.WEST, frame.getContentPane());
@@ -107,7 +124,7 @@ public class LauncherWindow {
 				login();
 				
 			}});
-		springLayout.putConstraint(SpringLayout.SOUTH, button, -6, SpringLayout.NORTH, button_1);
+		springLayout.putConstraint(SpringLayout.SOUTH, button, -6, SpringLayout.NORTH, btnPlayOffline);
 		frame.getContentPane().add(button);
 		
 		JScrollPane scrollPane = new JScrollPane();
@@ -119,9 +136,14 @@ public class LauncherWindow {
 		
 		JEditorPane editorPane = new JEditorPane();
 		editorPane.setContentType("text/html");
-		try { editorPane.setPage("http://mcupdate.tumblr.com"); } catch (IOException e1) {}
+		try { editorPane.setPage("http://eoisupdate.tumblr.com"); } catch (IOException e1) {}
 		editorPane.setEditable(false);
 		scrollPane.setViewportView(editorPane);
+		
+		chckbxForceUpdate = new JCheckBox("Force Update");
+		springLayout.putConstraint(SpringLayout.SOUTH, chckbxForceUpdate, -6, SpringLayout.NORTH, btnPlayOffline);
+		springLayout.putConstraint(SpringLayout.EAST, chckbxForceUpdate, -7, SpringLayout.WEST, button);
+		frame.getContentPane().add(chckbxForceUpdate);
 	}
 	
 	public void login()
@@ -156,27 +178,89 @@ public class LauncherWindow {
 		      System.out.println("Username: " + values[2]);
 		      System.out.println("Session ID: " + values[3]);
 		      String[] mc = new String[] {CodeCore.getWorkingDir(), values[2], values[3]};
-		      boolean exists = (new File(CodeCore.getWorkingDir() + "/bin/minecraft.jar")).exists();
-		      boolean exists1 = (new File(CodeCore.getWorkingDir() + "/bin/lwjgl.jar")).exists();
-		      boolean exists2 = (new File(CodeCore.getWorkingDir() + "/bin/lwjgl_util.jar")).exists();
-		      boolean exists3 = (new File(CodeCore.getWorkingDir() + "/bin/jinput.jar")).exists();
+		      if (chckbxForceUpdate.isSelected()) 
+		      {
+		    	File mcjar = new File(CodeCore.getWorkingDir() + "/bin/minecraft.jar");
+		  		File lwjgljar = new File(CodeCore.getWorkingDir() + "/bin/lwjgl.jar");
+		  		File jinputjar = new File(CodeCore.getWorkingDir() + "/bin/jinput.jar");
+		  		File natives = new File(CodeCore.getWorkingDir() + "/bin/natives.jar.lzma");
+		  		File utiljar = new File(CodeCore.getWorkingDir() + "/bin/lwjgl_util.jar");
+		  		File elementzip = new File(CodeCore.getWorkingDir() + "/bin/eois.zip");
+		  		URL minecraft = new URL("http://s3.amazonaws.com/MinecraftDownload/minecraft.jar");
+		  		URL lwjgl = new URL("http://s3.amazonaws.com/MinecraftDownload/lwjgl.jar");
+		  		URL jinput = new URL("http://s3.amazonaws.com/MinecraftDownload/jinput.jar");
+		  		URL lwjgl_util = new URL("http://s3.amazonaws.com/MinecraftDownload/lwjgl_util.jar");
+		  		URL lnatives = new URL("http://s3.amazonaws.com/MinecraftDownload/linux_natives.jar.lzma");
+		  		URL wnatives = new URL("http://s3.amazonaws.com/MinecraftDownload/windows_natives.jar.lzma");
+		  		URL elements = new URL("http://dl.jphweb.com/emc/latest.zip");
+		  		if (CodeCore.isLinux()){
+		  			org.apache.commons.io.FileUtils.copyURLToFile(lnatives, natives, 5000, 10000);
+		  			String[] ex = new String[] {"d", CodeCore.getWorkingDir() + "/bin/natives.jar.lzma", CodeCore.getWorkingDir() + "/bin/linux_natives.jar"};
+		  			LzmaAlone.main(ex);
+		  		}
+
+		  		if (CodeCore.isWin()) {
+		  			org.apache.commons.io.FileUtils.copyURLToFile(wnatives, natives, 5000, 10000);
+		  			String[] ex = new String[] {"d", CodeCore.getWorkingDir() + "/bin/natives.jar.lzma", CodeCore.getWorkingDir() + "/bin/windows_natives.jar"};
+		  			LzmaAlone.main(ex);
+		  		}
+		  		org.apache.commons.io.FileUtils.copyURLToFile(minecraft, mcjar, 5000, 10000);
+		  		org.apache.commons.io.FileUtils.copyURLToFile(lwjgl, lwjgljar, 5000, 10000);
+		  		org.apache.commons.io.FileUtils.copyURLToFile(jinput, jinputjar, 5000, 10000);
+		  		org.apache.commons.io.FileUtils.copyURLToFile(lwjgl_util, utiljar, 5000, 10000);
+		  		org.apache.commons.io.FileUtils.copyURLToFile(elements, elementzip, 5000, 10000);
+		    	MinecraftLauncher.init(mc);
+		      } 
 		      if (exists && exists1 && exists2 && exists3) 
 		      {
 		    	  MinecraftLauncher.init(mc);
 		      } 
 		      else 
 		      {
-		    	  installElementsOfInsanity();
-		    	  MinecraftLauncher.init(mc);
+		    	File mcjar = new File(CodeCore.getWorkingDir() + "/bin/minecraft.jar");
+		  		File lwjgljar = new File(CodeCore.getWorkingDir() + "/bin/lwjgl.jar");
+		  		File jinputjar = new File(CodeCore.getWorkingDir() + "/bin/jinput.jar");
+		  		File utiljar = new File(CodeCore.getWorkingDir() + "/bin/lwjgl_util.jar");
+		  		File elementzip = new File(CodeCore.getWorkingDir() + "/bin/eois.zip");
+		  		File natives = new File(CodeCore.getWorkingDir() + "/bin/natives.jar.lzma");
+		  		URL minecraft = new URL("http://s3.amazonaws.com/MinecraftDownload/minecraft.jar");
+		  		URL lwjgl = new URL("http://s3.amazonaws.com/MinecraftDownload/lwjgl.jar");
+		  		URL jinput = new URL("http://s3.amazonaws.com/MinecraftDownload/jinput.jar");
+		  		URL lwjgl_util = new URL("http://s3.amazonaws.com/MinecraftDownload/lwjgl_util.jar");
+		  		URL elements = new URL("http://dl.jphweb.com/emc/latest.zip");
+		  		URL lnatives = new URL("http://s3.amazonaws.com/MinecraftDownload/linux_natives.jar.lzma");
+		  		URL wnatives = new URL("http://s3.amazonaws.com/MinecraftDownload/windows_natives.jar.lzma");
+		  		if (CodeCore.isLinux()){
+		  			org.apache.commons.io.FileUtils.copyURLToFile(lnatives, natives, 5000, 10000);
+		  			String[] ex = new String[] {"d", CodeCore.getWorkingDir() + "/bin/natives.jar.lzma", CodeCore.getWorkingDir() + "/bin/linux_natives.jar"};
+		  			LzmaAlone.main(ex);
+		  		}
+		  		if (CodeCore.isWin()) {
+		  			org.apache.commons.io.FileUtils.copyURLToFile(wnatives, natives, 5000, 10000);
+		  			String[] ex = new String[] {"d", CodeCore.getWorkingDir() + "/bin/natives.jar.lzma", CodeCore.getWorkingDir() + "/bin/windows_natives.jar"};
+		  			LzmaAlone.main(ex);
+		  		}
+		  		org.apache.commons.io.FileUtils.copyURLToFile(minecraft, mcjar, 5000, 10000);
+		  		org.apache.commons.io.FileUtils.copyURLToFile(lwjgl, lwjgljar, 5000, 10000);
+		  		org.apache.commons.io.FileUtils.copyURLToFile(jinput, jinputjar, 5000, 10000);
+		  		org.apache.commons.io.FileUtils.copyURLToFile(lwjgl_util, utiljar, 5000, 10000);
+		  		org.apache.commons.io.FileUtils.copyURLToFile(elements, elementzip, 5000, 10000);
+		  		
+		    	MinecraftLauncher.init(mc);
 		      }	      
 		} 
 		catch (Exception e1) {}
 	}
-	
-	public void installElementsOfInsanity() throws Exception
-	{
-		label.setText("Downloading...");
-		CodeCore.download();
-		label.setText("Done!");
-	}
+		
+		public static final void copyInputStream(InputStream in, OutputStream out)
+				throws IOException
+				{
+				byte[] buffer = new byte[1024];
+				int len;
+				while((len = in.read(buffer)) >= 0)
+				out.write(buffer, 0, len);
+				in.close();
+				out.close();
+				}
+				
 }

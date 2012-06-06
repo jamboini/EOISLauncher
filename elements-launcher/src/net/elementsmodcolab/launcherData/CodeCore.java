@@ -93,28 +93,4 @@ public class CodeCore
 	        connection.disconnect();
 	    }
 	}
-
-	public static void settingsDialogue() 
-	{
-		
-	}
-	
-	public static void download() throws Exception
-	{
-		File mcjar = new File(CodeCore.getWorkingDir() + "/bin/minecraft.jar");
-		File lwjgljar = new File(CodeCore.getWorkingDir() + "/bin/lwjgl.jar");
-		File jinputjar = new File(CodeCore.getWorkingDir() + "/bin/jinput.jar");
-		File utiljar = new File(CodeCore.getWorkingDir() + "/bin/lwjgl_util.jar");
-		File elementzip = new File(CodeCore.getWorkingDir() + "/bin/eois.zip");
-		URL minecraft = new URL("http://s3.amazonaws.com/MinecraftDownload/minecraft.jar");
-		URL lwjgl = new URL("http://s3.amazonaws.com/MinecraftDownload/lwjgl.jar");
-		URL jinput = new URL("http://s3.amazonaws.com/MinecraftDownload/jinput.jar");
-		URL lwjgl_util = new URL("http://s3.amazonaws.com/MinecraftDownload/lwjgl_util.jar");
-		URL elements = new URL("http://dl.jphweb.com/emc/latest.zip");
-		org.apache.commons.io.FileUtils.copyURLToFile(minecraft, mcjar, 5000, 10000);
-		org.apache.commons.io.FileUtils.copyURLToFile(lwjgl, lwjgljar, 5000, 10000);
-		org.apache.commons.io.FileUtils.copyURLToFile(jinput, jinputjar, 5000, 10000);
-		org.apache.commons.io.FileUtils.copyURLToFile(lwjgl_util, utiljar, 5000, 10000);
-		org.apache.commons.io.FileUtils.copyURLToFile(elements, elementzip, 5000, 10000);
-	}
 }
